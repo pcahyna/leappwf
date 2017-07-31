@@ -7,6 +7,7 @@ import sys
 from jsonschema import exceptions, validate
 
 from .msgtypes import ShellCommandStatus
+from .portannotation import MsgType
 
 
 class JSONClassFactory(object):
@@ -80,7 +81,7 @@ class JSONClassFactory(object):
             self._classes.update({name: type(name, (superclass,), {})})
             return
 
-        self._classes.update({name: type(name, (object,), {})})
+        self._classes.update({name: type(name, (MsgType,), {})})
 
     def generate_classes(self):
         """ Generate all classes """
