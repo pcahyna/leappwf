@@ -12,4 +12,3 @@ if __name__ == '__main__':
         print("[retcode]: {}".format(data['retcode']))
         # Commented out for readability
         # print("\t[error]: {}".format(data['error']))
-        # print("\t[output]: {}".format(data['output']))

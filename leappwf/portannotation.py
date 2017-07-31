@@ -54,9 +54,8 @@ def matchport(inport, outport):
         return False
 
 class MsgType(object):
-    def __init__(self, srcname, output, errorinfo, payload):
+    def __init__(self, srcname, errorinfo, payload):
         self.srcname=srcname
-        self.output=output
         # errorinfo is an ActorError exception defined below
         self.errorinfo=errorinfo
         self.payload=payload

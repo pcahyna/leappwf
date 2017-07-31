@@ -65,24 +65,18 @@ class DirAnnotatedShellActor(AnnotatedFuncActor):
         """ Default function to run after main script """
         logging.debug("[RUNNING] [post] (default): %s", self.name)
         return self.outports.values()[0].annotation.msgtype(self.name,
-                                                            res[1],
                                                             res[2],
                                                             res[0])
 
-    def _execfunc(self, inportargs):
+    def _execfunc(self, _):
         """ Method that should be executed by actor"""
         logging.debug("[RUNNING]: %s", self.name)
 
-        input_arg = ""
-        for arg in inportargs:
-            if arg:
-                input_arg = arg.output
-
-        child = Popen(self._script,
-                      stdin=PIPE,
+        child = Popen(self._target_cmd,
+                      stdin=self._script,
                       stdout=PIPE,
                       stderr=PIPE)
-        out, err = child.communicate(input=input_arg)
+        out, err = child.communicate()
         return (child.returncode, out, err)
 
     def _allfunc(self, *inportargs):
@@ -96,11 +90,10 @@ class DirAnnotatedShellActor(AnnotatedFuncActor):
         except ActorError as ae:
             if len(self.outports) == 1:
                 excres = self.outports.at(0).annotation.msgtype(self.name,
-                                                                None,
                                                                 ae,
                                                                 None)
             else:
-                excres = tuple(port.annotation.msgtype(self.name, None, ae, None) for port in self.outports)
+                excres = tuple(port.annotation.msgtype(self.name, ae, None) for port in self.outports)
             return excres
 
         return self._postfunc(res)

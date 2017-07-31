@@ -55,8 +55,7 @@ class Workflow(object):
             ret = {}
             for msg in stats.values():
                 ret.update({msg.srcname: {'retcode': msg.payload,
-                                          'error': msg.errorinfo,
-                                          'output': msg.output}})
+                                          'error': msg.errorinfo}})
             return ret
 
         def_start = AnnotatedFuncActor(
