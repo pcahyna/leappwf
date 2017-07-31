@@ -1,5 +1,4 @@
 from wowp.actors import DictionaryMerge
-import logging
 
 class Any(object):
     """A unique wildcard object
@@ -85,10 +84,10 @@ def connectactors(actors):
 
         for op in alloutports:
             if matchport(ip, op):
-                # print("matched! ", ip)
+#                print("matched! ", ip)
                 opcount += 1
                 if ip.annotation.srcname==All:
-                    # print("wildcard matched! ", ip)
+#                    print("wildcard matched! ", ip)
                     ip.annotation.matchports.append(op)
                 else:
                     ip += op
