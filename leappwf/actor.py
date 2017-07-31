@@ -72,8 +72,9 @@ class DirAnnotatedShellActor(AnnotatedFuncActor):
         """ Method that should be executed by actor"""
         logging.debug("[RUNNING]: %s", self.name)
 
+        script_input = open(self._script)
         child = Popen(self._target_cmd,
-                      stdin=self._script,
+                      stdin=script_input,
                       stdout=PIPE,
                       stderr=PIPE)
         out, err = child.communicate()
