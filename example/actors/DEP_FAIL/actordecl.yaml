@@ -1,2 +1,2 @@
 inports  :
-    - WillFailStatus
+        - src: WILL_FAIL

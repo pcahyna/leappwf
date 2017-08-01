@@ -1,2 +1,2 @@
 inports  :
-    - RsyncStatus
+        - src: has_rsync

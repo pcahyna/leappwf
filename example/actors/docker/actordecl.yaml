@@ -1,2 +1,2 @@
 inports  :
-    - DockerStatus
+        - src: has_docker

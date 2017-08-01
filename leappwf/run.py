@@ -54,8 +54,7 @@ class ActorData(object):
         """ Return actor's inports """
         if self._data and _INPORTS_KEY in self._data:
             return self._data[_INPORTS_KEY]
-
-        return [_DEFAULT_INPORT]
+        return []
 
     @property
     def outports(self):
@@ -63,6 +62,15 @@ class ActorData(object):
         if self._data and _OUTPORTS_KEY in self._data:
             return self._data[_OUTPORTS_KEY]
         return []
+
+    def set_inports(self, inports):
+        """ Override current inports list """
+        if self._data and _INPORTS_KEY in self._data:
+            self._data[_INPORTS_KEY] = inports
+        elif self._data:
+            self._data.update({_INPORTS_KEY: inports})
+        else:
+            self._data = {_INPORTS_KEY: inports}
 
     def set_outports(self, outports):
         """ Override current outports list """
@@ -146,6 +154,13 @@ class LeAppWorkflow(object):
             outports_annotation=out_annotation
         ))
 
+    def _parse_inports(self, actor_data):
+        """ Parse inports data """
+        if not actor_data.inports:
+            actor_data.set_inports([_DEFAULT_INPORT])
+
+        return True
+
     def _parse_outports(self, actor_data):
         """ Parse outports data """
         if actor_data.outports:
@@ -201,7 +216,9 @@ class LeAppWorkflow(object):
                                    actor_path,
                                    actor_yaml)
 
-            if self._parse_outports(actor_data):
+            parsed_inports = self._parse_inports(actor_data)
+            parsed_outports = self._parse_outports(actor_data)
+            if parsed_inports and parsed_outports:
                 self.actors_data.append(actor_data)
 
         self.class_factory.generate_classes()
