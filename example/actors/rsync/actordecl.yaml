@@ -1,2 +1,3 @@
 inports  :
         - src: has_rsync
+          type: RsyncStatus.json

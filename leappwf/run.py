@@ -15,6 +15,8 @@ _YAML_FILENAME = 'actordecl.yaml'
 _SCRIPT_KEY = 'script'
 _INPORTS_KEY = 'inports'
 _OUTPORTS_KEY = 'outports'
+_PORT_SRC_KEY = 'src'
+_PORT_TYPE_KEY = 'type'
 
 _DEFAULT_INPORT = 'default_in'
 _DEFAULT_OUTPORT_SUFFIX = 'out'
@@ -119,19 +121,28 @@ class LeAppWorkflow(object):
 
         missing_inport = None
         in_annotation = {}
+        in_names = []
         for port in actor.inports:
             # If no inport was defined via YAML file use the Trigger one
             if port == _DEFAULT_INPORT:
+                in_names.append(port)
                 in_annotation.update({port: DstPortAnnotation(Trigger,
                                                               Any)})
                 continue
 
-            msg_type = self.class_factory.get_class(port)
-            if not msg_type:
-                missing_inport = port
+            if _PORT_TYPE_KEY in port:
+                port_type, _ = os.path.splitext(port[_PORT_TYPE_KEY])
+
+                msg_type = self.class_factory.get_class(port_type)
+                if msg_type:
+                    in_names.append(port_type)
+                    in_annotation.update({port_type: DstPortAnnotation(msg_type,
+                                                                       port[_PORT_SRC_KEY])})
+                else:
+                    missing_inport = port
                 continue
-            in_annotation.update({port: DstPortAnnotation(msg_type,
-                                                          Any)})
+
+            missing_inport = port
 
         if missing_inport:
             logging.warning("skip %s: no inport/outport match for %s",
@@ -148,7 +159,7 @@ class LeAppWorkflow(object):
             actor.name,
             self.workflow.get_exec_cmd(),
             script,
-            inports=actor.inports,
+            inports=in_names,
             inports_annotation=in_annotation,
             outports=actor.outports,
             outports_annotation=out_annotation
@@ -156,7 +167,18 @@ class LeAppWorkflow(object):
 
     def _parse_inports(self, actor_data):
         """ Parse inports data """
-        if not actor_data.inports:
+        if actor_data.inports:
+            for port in actor_data.inports:
+                if _PORT_TYPE_KEY in port:
+                    port_json = os.path.join(actor_data.path,
+                                             port[_PORT_TYPE_KEY])
+                    if not os.path.isfile(port_json):
+                        logging.warning("skip %s: no inport descr for %s",
+                                        actor_data.name,
+                                        port[_PORT_TYPE_KEY])
+                        return False
+                    self.class_factory.add_json_class(port_json)
+        else:
             actor_data.set_inports([_DEFAULT_INPORT])
 
         return True
@@ -167,7 +189,7 @@ class LeAppWorkflow(object):
             for port in actor_data.outports:
                 port_json = os.path.join(actor_data.path, port + '.json')
                 if not os.path.isfile(port_json):
-                    logging.warning("skip %s: no outport description for %s",
+                    logging.warning("skip %s: no outport descr for %s",
                                     actor_data.name,
                                     port)
                     return False
