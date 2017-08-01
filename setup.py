@@ -16,7 +16,7 @@ with open(convert_path('leappwf/version.py')) as mod:
     _NAME = ns['__pkg_name__']
     _VERSION = ns['__version__']
 
-with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
+with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(

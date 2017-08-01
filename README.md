@@ -5,7 +5,18 @@ LeApp Workflow Module based on wowp
 
 Prerequisites
 =============
-TODO
+```
+# dnf copr enable amello/python-wowp
+# dnf install -y python2-future python2-jsonschema python2-networkx python2-six python2-wowp
+```
+
+Install
+=======
+```
+$ git clone https://github.com/artmello/leappwf.git
+$ cd leappwf
+$ pip --user install .
+```
 
 Examples
 ========
