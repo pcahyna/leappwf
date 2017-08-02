@@ -84,7 +84,6 @@ class JSONClassFactory(object):
         """ Generate Class from data """
         superclass = None
         if superclass_name:
-            # FIXME: THIS WILL FAIL
             if superclass_name in self.actor_classes(src_actor):
                 superclass = self.get_actor_class(src_actor, superclass_name)
             else:
