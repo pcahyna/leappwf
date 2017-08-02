@@ -141,9 +141,11 @@ class LeAppWorkflow(object):
             else:
                 if psrc in self.actors_data:
                     if len(self.actors_data[psrc].outports) == 1:
-                        ptype = self.actors_data[psrc].outports[0]
-                        msg_type = self.class_factory.get_actor_class(psrc,
-                                                                      ptype)
+                        oport = self.actors_data[psrc].outports[0]
+                        if _PORT_TYPE_KEY in oport:
+                            ptype, _ = os.path.splitext(oport[_PORT_TYPE_KEY])
+                            msg_type = self.class_factory.get_actor_class(psrc,
+                                                                          ptype)
 
             if msg_type:
                 in_names.append(pname)
@@ -154,11 +156,31 @@ class LeAppWorkflow(object):
                                 actor.name)
                 return
 
+        out_names = []
         out_annotation = {}
         for port in actor.outports:
-            port_class = self.class_factory.get_actor_class(actor.name,
-                                                            port)
-            out_annotation.update({port: PortAnnotation(port_class)})
+            ptype = None
+            if _PORT_TYPE_KEY in port:
+                ptype, _ = os.path.splitext(port[_PORT_TYPE_KEY])
+
+            pname = None
+            if _PORT_NAME_KEY in port:
+                pname = port[_PORT_NAME_KEY]
+            else:
+                pname = ptype
+
+            msg_type = None
+            if ptype:
+                msg_type = self.class_factory.get_actor_class(actor.name,
+                                                              ptype)
+
+            if msg_type:
+                out_names.append(pname)
+                out_annotation.update({pname: PortAnnotation(msg_type)})
+            else:
+                logging.warning("skip %s: no outport provided",
+                                actor.name)
+                return
 
         self.workflow.add_actor(DirAnnotatedShellActor(
             actor.name,
@@ -166,7 +188,7 @@ class LeAppWorkflow(object):
             script,
             inports=in_names,
             inports_annotation=in_annotation,
-            outports=actor.outports,
+            outports=out_names,
             outports_annotation=out_annotation
         ))
 
@@ -191,15 +213,21 @@ class LeAppWorkflow(object):
         """ Parse outports data """
         if actor_data.outports:
             for port in actor_data.outports:
-                port_json = os.path.join(actor_data.path, port + '.json')
-                if not os.path.isfile(port_json):
-                    logging.warning("skip %s: no outport descr for %s",
-                                    actor_data.name,
-                                    port)
-                    return False
+                if _PORT_TYPE_KEY in port:
+                    port_json = os.path.join(actor_data.path,
+                                             port[_PORT_TYPE_KEY])
+                    if not os.path.isfile(port_json):
+                        logging.warning("skip %s: no outport descr for %s",
+                                        actor_data.name,
+                                        port[_PORT_TYPE_KEY])
+                        return False
 
-                self.class_factory.add_json_class(actor_data.name,
-                                                  port_json)
+                    self.class_factory.add_json_class(actor_data.name,
+                                                      port_json)
+                else:
+                    logging.warning("skip %s: no outport descr",
+                                    actor_data.name)
+                    return False
 
         else:
             port_json = os.path.join(actor_data.path,
@@ -210,7 +238,7 @@ class LeAppWorkflow(object):
                 return False
 
             outport_name = actor_data.name + '_' + _OUTPORT_SUFFIX
-            actor_data.set_outports([outport_name])
+            actor_data.set_outports([{_PORT_TYPE_KEY: outport_name + '.json'}])
             self.class_factory.add_json_class(actor_data.name,
                                               port_json,
                                               outport_name)

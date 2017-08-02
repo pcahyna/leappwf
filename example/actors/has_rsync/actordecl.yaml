@@ -1,2 +1,2 @@
 outports:
-    - RsyncStatus
+        - type: RsyncStatus.json
