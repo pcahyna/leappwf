@@ -1,3 +1,2 @@
 inports  :
         - src: WILL_FAIL
-          type: WillFailStatus.json

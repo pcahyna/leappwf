@@ -1,3 +1,2 @@
 inports  :
         - src: has_docker
-          type: DockerStatus.json

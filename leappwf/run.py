@@ -83,7 +83,7 @@ class LeAppWorkflow(object):
         self._workflow = Workflow()
         self._actors_path = path
         self._class_factory = JSONClassFactory()
-        self._actors_data = []
+        self._actors_data = {}
 
     @property
     def workflow(self):
@@ -136,11 +136,14 @@ class LeAppWorkflow(object):
             if _PORT_TYPE_KEY in port:
                 ptype, _ = os.path.splitext(port[_PORT_TYPE_KEY])
 
-                msg_type = self.class_factory.get_class(ptype)
+                msg_type = self.class_factory.get_actor_class(actor.name,
+                                                              ptype)
             else:
-                logging.warning("skip %s: no inport type defined",
-                                actor.name)
-                return
+                if psrc in self.actors_data:
+                    if len(self.actors_data[psrc].outports) == 1:
+                        ptype = self.actors_data[psrc].outports[0]
+                        msg_type = self.class_factory.get_actor_class(psrc,
+                                                                      ptype)
 
             if msg_type:
                 in_names.append(pname)
@@ -153,7 +156,8 @@ class LeAppWorkflow(object):
 
         out_annotation = {}
         for port in actor.outports:
-            port_class = self.class_factory.get_class(port)
+            port_class = self.class_factory.get_actor_class(actor.name,
+                                                            port)
             out_annotation.update({port: PortAnnotation(port_class)})
 
         self.workflow.add_actor(DirAnnotatedShellActor(
@@ -178,7 +182,8 @@ class LeAppWorkflow(object):
                                         actor_data.name,
                                         port[_PORT_TYPE_KEY])
                         return False
-                    self.class_factory.add_json_class(port_json)
+                    self.class_factory.add_json_class(actor_data.name,
+                                                      port_json)
 
         return True
 
@@ -193,7 +198,8 @@ class LeAppWorkflow(object):
                                     port)
                     return False
 
-                self.class_factory.add_json_class(port_json)
+                self.class_factory.add_json_class(actor_data.name,
+                                                  port_json)
 
         else:
             port_json = os.path.join(actor_data.path,
@@ -205,7 +211,9 @@ class LeAppWorkflow(object):
 
             outport_name = actor_data.name + '_' + _OUTPORT_SUFFIX
             actor_data.set_outports([outport_name])
-            self.class_factory.add_json_class(port_json, outport_name)
+            self.class_factory.add_json_class(actor_data.name,
+                                              port_json,
+                                              outport_name)
 
         return True
 
@@ -240,12 +248,12 @@ class LeAppWorkflow(object):
             parsed_inports = self._parse_inports(actor_data)
             parsed_outports = self._parse_outports(actor_data)
             if parsed_inports and parsed_outports:
-                self.actors_data.append(actor_data)
+                self.actors_data.update({actor_name: actor_data})
 
         self.class_factory.generate_classes()
 
-        for actor in self.actors_data:
-            self._add_actor(actor)
+        for _, data in self.actors_data.items():
+            self._add_actor(data)
 
     def run_actors(self):
         """ Run workflow """
