@@ -10,5 +10,5 @@ if __name__ == '__main__':
     for actor, data in ret.items():
         print("* {}:".format(actor))
         print("[retcode]: {}".format(data['retcode']))
-        # Commented out for readability
-        # print("\t[error]: {}".format(data['error']))
+        if data['error']:
+            print("\t[error]: {}".format(data['error']))
