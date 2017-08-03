@@ -30,12 +30,14 @@ class JSONClassFactory(object):
         self._classes_data = {}
         self._classes = {}
 
-    @property
-    def classes(self):
-        """ Return a list of all generated classes """
-        return self._classes.keys()
+    def actor_classes(self, src_actor):
+        """ Return a list of all generated classes for a src actor """
+        if src_actor not in self._classes:
+            return []
 
-    def _parse_json_file(self, file_path, class_name=None):
+        return self._classes[src_actor].keys()
+
+    def _parse_json_file(self, src_actor, file_path, class_name=None):
         """ Parse and validate JSON file """
         with open(file_path, 'r') as stream:
             try:
@@ -58,66 +60,78 @@ class JSONClassFactory(object):
             file_name = os.path.basename(file_path)
             name, _ = os.path.splitext(file_name)
 
-        self._classes_data.update({name: class_data})
+        if src_actor not in self._classes_data:
+            self._classes_data.update({src_actor: []})
 
-    def add_json_class(self, json_path, class_name=None):
+        self._classes_data[src_actor].append((name, class_data))
+
+    def add_json_class(self, src_actor, json_path, class_name=None):
         """ Load and parse provided JSON file with class definition """
         if not json_path.endswith('.json'):
             logging.warning("%s not JSON file ignored", json_path)
             return
 
-        self._parse_json_file(json_path, class_name)
+        self._parse_json_file(src_actor, json_path, class_name)
 
-    def get_class(self, name):
+    def get_actor_class(self, src_actor, class_name):
         """ Return generated class by name """
-        if name not in self._classes.keys():
+        if class_name not in self.actor_classes(src_actor):
             return None
 
-        return self._classes[name]
+        return self._classes[src_actor][class_name]
 
-    def _generate_class(self, name, superclass):
+    def _generate_class(self, src_actor, name, superclass_name=None):
         """ Generate Class from data """
-        if superclass:
-            self._classes.update({name: type(name, (superclass,), {})})
-            return
+        superclass = None
+        if superclass_name:
+            if superclass_name in self.actor_classes(src_actor):
+                superclass = self.get_actor_class(src_actor, superclass_name)
+            else:
+                try:
+                    superclass = getattr(sys.modules[__name__],
+                                         superclass_name)
+                except AttributeError:
+                    superclass = None
 
-        self._classes.update({name: type(name, (MsgType,), {})})
+            if not superclass:
+                return False
+
+        new_class = None
+        if superclass:
+            new_class = type(name, (superclass,), {})
+        else:
+            new_class = type(name, (MsgType,), {})
+
+        if src_actor not in self._classes:
+            self._classes.update({src_actor: {}})
+
+        self._classes[src_actor].update({name: new_class})
+        return True
 
     def generate_classes(self):
         """ Generate all classes """
-        while True:
-            pending = {}
-            something_built = False
+        for src_actor, classes_data in self._classes_data.items():
+            while True:
+                pending = ()
+                something_built = False
 
-            for name, data in self._classes_data.items():
-                if name in self.classes:
-                    continue
+                for name, data in classes_data:
+                    if name in self.actor_classes(src_actor):
+                        continue
 
-                superclass_name = None
-                if u'superclass' in data:
-                    superclass_name = data[u'superclass'].encode('ascii')
+                    superclass_name = None
+                    if u'superclass' in data:
+                        superclass_name = data[u'superclass'].encode('ascii')
 
-                superclass = None
-                if superclass_name in self.classes:
-                    superclass = self.get_class(superclass_name)
-                else:
-                    try:
-                        superclass = getattr(sys.modules[__name__],
-                                             superclass_name)
-                    except AttributeError:
-                        superclass = None
+                    if self._generate_class(src_actor, name, superclass_name):
+                        something_built = True
+                    else:
+                        pending.append(name)
 
-                if not superclass_name or superclass:
-                    self._generate_class(name, superclass)
-                    something_built = True
-                    continue
+                if not pending:
+                    break
+                elif not something_built:
+                    logging.warning("Classes not built for missing deps: %s",
+                                    pending)
 
-                pending.update({name: data})
-
-            if not pending:
-                break
-            elif not something_built:
-                logging.warning("Classes not built for missing deps: %s",
-                                pending)
-
-                break
+                    break

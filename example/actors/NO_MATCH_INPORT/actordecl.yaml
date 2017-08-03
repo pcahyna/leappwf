@@ -1,2 +1,2 @@
 inports  :
-    - NO_ONE_PROVIDES_THIS
+        - src: NO_ACTOR

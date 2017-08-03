@@ -15,9 +15,13 @@ _YAML_FILENAME = 'actordecl.yaml'
 _SCRIPT_KEY = 'script'
 _INPORTS_KEY = 'inports'
 _OUTPORTS_KEY = 'outports'
+_PORT_NAME_KEY = 'name'
+_PORT_SRC_KEY = 'src'
+_PORT_TYPE_KEY = 'type'
 
 _DEFAULT_INPORT = 'default_in'
-_DEFAULT_OUTPORT_SUFFIX = 'out'
+_INPORT_SUFFIX = 'in'
+_OUTPORT_SUFFIX = 'out'
 
 
 class ActorData(object):
@@ -54,8 +58,7 @@ class ActorData(object):
         """ Return actor's inports """
         if self._data and _INPORTS_KEY in self._data:
             return self._data[_INPORTS_KEY]
-
-        return [_DEFAULT_INPORT]
+        return []
 
     @property
     def outports(self):
@@ -80,7 +83,7 @@ class LeAppWorkflow(object):
         self._workflow = Workflow()
         self._actors_path = path
         self._class_factory = JSONClassFactory()
-        self._actors_data = []
+        self._actors_data = {}
 
     @property
     def workflow(self):
@@ -109,67 +112,136 @@ class LeAppWorkflow(object):
             logging.warning("skip %s: no script defined", actor.name)
             return
 
-        missing_inport = None
+        in_names = []
         in_annotation = {}
-        for port in actor.inports:
+        if not actor.inports:
             # If no inport was defined via YAML file use the Trigger one
-            if port == _DEFAULT_INPORT:
-                in_annotation.update({port: DstPortAnnotation(Trigger,
-                                                              Any)})
-                continue
+            in_names.append(_DEFAULT_INPORT)
+            in_annotation.update({_DEFAULT_INPORT: DstPortAnnotation(Trigger,
+                                                                     Any)})
+        for port in actor.inports:
+            if _PORT_SRC_KEY not in port:
+                logging.warning("skip %s: no src actor defined for inport",
+                                actor.name)
+                return
+            psrc = port[_PORT_SRC_KEY]
 
-            msg_type = self.class_factory.get_class(port)
-            if not msg_type:
-                missing_inport = port
-                continue
-            in_annotation.update({port: DstPortAnnotation(msg_type,
-                                                          Any)})
+            pname = None
+            if _PORT_NAME_KEY in port:
+                pname = port[_PORT_NAME_KEY]
+            else:
+                pname = psrc + _INPORT_SUFFIX
 
-        if missing_inport:
-            logging.warning("skip %s: no inport/outport match for %s",
-                            actor.name,
-                            missing_inport)
-            return
+            msg_type = None
+            if _PORT_TYPE_KEY in port:
+                ptype, _ = os.path.splitext(port[_PORT_TYPE_KEY])
 
+                msg_type = self.class_factory.get_actor_class(actor.name,
+                                                              ptype)
+            else:
+                if psrc in self.actors_data:
+                    if len(self.actors_data[psrc].outports) == 1:
+                        oport = self.actors_data[psrc].outports[0]
+                        if _PORT_TYPE_KEY in oport:
+                            ptype, _ = os.path.splitext(oport[_PORT_TYPE_KEY])
+                            msg_type = self.class_factory.get_actor_class(psrc,
+                                                                          ptype)
+
+            if msg_type:
+                in_names.append(pname)
+                in_annotation.update({pname: DstPortAnnotation(msg_type,
+                                                               psrc)})
+            else:
+                logging.warning("skip %s: no inport/outport match",
+                                actor.name)
+                return
+
+        out_names = []
         out_annotation = {}
         for port in actor.outports:
-            port_class = self.class_factory.get_class(port)
-            out_annotation.update({port: PortAnnotation(port_class)})
+            ptype = None
+            if _PORT_TYPE_KEY in port:
+                ptype, _ = os.path.splitext(port[_PORT_TYPE_KEY])
+
+            pname = None
+            if _PORT_NAME_KEY in port:
+                pname = port[_PORT_NAME_KEY]
+            else:
+                pname = ptype
+
+            msg_type = None
+            if ptype:
+                msg_type = self.class_factory.get_actor_class(actor.name,
+                                                              ptype)
+
+            if msg_type:
+                out_names.append(pname)
+                out_annotation.update({pname: PortAnnotation(msg_type)})
+            else:
+                logging.warning("skip %s: no outport provided",
+                                actor.name)
+                return
 
         self.workflow.add_actor(DirAnnotatedShellActor(
             actor.name,
             self.workflow.get_exec_cmd(),
             script,
-            inports=actor.inports,
+            inports=in_names,
             inports_annotation=in_annotation,
-            outports=actor.outports,
+            outports=out_names,
             outports_annotation=out_annotation
         ))
+
+    def _parse_inports(self, actor_data):
+        """ Parse inports data """
+        if actor_data.inports:
+            for port in actor_data.inports:
+                if _PORT_TYPE_KEY in port:
+                    port_json = os.path.join(actor_data.path,
+                                             port[_PORT_TYPE_KEY])
+                    if not os.path.isfile(port_json):
+                        logging.warning("skip %s: no inport descr for %s",
+                                        actor_data.name,
+                                        port[_PORT_TYPE_KEY])
+                        return False
+                    self.class_factory.add_json_class(actor_data.name,
+                                                      port_json)
+
+        return True
 
     def _parse_outports(self, actor_data):
         """ Parse outports data """
         if actor_data.outports:
             for port in actor_data.outports:
-                port_json = os.path.join(actor_data.path, port + '.json')
-                if not os.path.isfile(port_json):
-                    logging.warning("skip %s: no outport description for %s",
-                                    actor_data.name,
-                                    port)
-                    return False
+                if _PORT_TYPE_KEY in port:
+                    port_json = os.path.join(actor_data.path,
+                                             port[_PORT_TYPE_KEY])
+                    if not os.path.isfile(port_json):
+                        logging.warning("skip %s: no outport descr for %s",
+                                        actor_data.name,
+                                        port[_PORT_TYPE_KEY])
+                        return False
 
-                self.class_factory.add_json_class(port_json)
+                    self.class_factory.add_json_class(actor_data.name,
+                                                      port_json)
+                else:
+                    logging.warning("skip %s: no outport descr",
+                                    actor_data.name)
+                    return False
 
         else:
             port_json = os.path.join(actor_data.path,
-                                     _DEFAULT_OUTPORT_SUFFIX + '.json')
+                                     _OUTPORT_SUFFIX + '.json')
             if not os.path.isfile(port_json):
                 logging.warning("skip %s: no outport provided",
                                 actor_data.name)
                 return False
 
-            outport_name = actor_data.name + '_' + _DEFAULT_OUTPORT_SUFFIX
-            actor_data.set_outports([outport_name])
-            self.class_factory.add_json_class(port_json, outport_name)
+            outport_name = actor_data.name + '_' + _OUTPORT_SUFFIX
+            actor_data.set_outports([{_PORT_TYPE_KEY: outport_name + '.json'}])
+            self.class_factory.add_json_class(actor_data.name,
+                                              port_json,
+                                              outport_name)
 
         return True
 
@@ -201,13 +273,15 @@ class LeAppWorkflow(object):
                                    actor_path,
                                    actor_yaml)
 
-            if self._parse_outports(actor_data):
-                self.actors_data.append(actor_data)
+            parsed_inports = self._parse_inports(actor_data)
+            parsed_outports = self._parse_outports(actor_data)
+            if parsed_inports and parsed_outports:
+                self.actors_data.update({actor_name: actor_data})
 
         self.class_factory.generate_classes()
 
-        for actor in self.actors_data:
-            self._add_actor(actor)
+        for _, data in self.actors_data.items():
+            self._add_actor(data)
 
     def run_actors(self):
         """ Run workflow """

@@ -65,7 +65,7 @@ class DirAnnotatedShellActor(AnnotatedFuncActor):
         """ Default function to run after main script """
         logging.debug("[RUNNING] [post] (default): %s", self.name)
         return self.outports.values()[0].annotation.msgtype(self.name,
-                                                            res[2],
+                                                            None,
                                                             res[0])
 
     def _execfunc(self, _):
