@@ -20,8 +20,8 @@ _PORT_SRC_KEY = 'src'
 _PORT_TYPE_KEY = 'type'
 
 _DEFAULT_INPORT = 'default_in'
+_DEFAULT_OUTPORT = 'out'
 _INPORT_SUFFIX = 'in'
-_OUTPORT_SUFFIX = 'out'
 
 
 class ActorData(object):
@@ -231,13 +231,13 @@ class LeAppWorkflow(object):
 
         else:
             port_json = os.path.join(actor_data.path,
-                                     _OUTPORT_SUFFIX + '.json')
+                                     _DEFAULT_OUTPORT + '.json')
             if not os.path.isfile(port_json):
                 logging.warning("skip %s: no outport provided",
                                 actor_data.name)
                 return False
 
-            outport_name = "out"
+            outport_name = _DEFAULT_OUTPORT
             actor_data.set_outports([{_PORT_TYPE_KEY: outport_name + '.json'}])
             self.class_factory.add_json_class(actor_data.name,
                                               port_json,
