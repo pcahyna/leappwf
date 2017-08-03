@@ -34,5 +34,13 @@ setup(
 
     packages=['leappwf'],
 
+    # Runtime dependencies
+    install_requires=[
+        "wowp",
+        "ipyparallel",
+        "pyyaml",
+        "jsonschema",
+    ],
+
     zip_safe=False,
 )
