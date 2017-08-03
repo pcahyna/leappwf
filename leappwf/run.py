@@ -237,7 +237,7 @@ class LeAppWorkflow(object):
                                 actor_data.name)
                 return False
 
-            outport_name = actor_data.name + '_' + _OUTPORT_SUFFIX
+            outport_name = "out"
             actor_data.set_outports([{_PORT_TYPE_KEY: outport_name + '.json'}])
             self.class_factory.add_json_class(actor_data.name,
                                               port_json,
