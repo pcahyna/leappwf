@@ -94,11 +94,11 @@ def connectactors(actors):
                 # we do not want to have more than one output port connected to one input port
                 # break
         if ip.annotation.srcname == All:
-            names = [mp.name for mp in ip.annotation.matchports]
-            ip.annotation.linkedactor = DictionaryMerge(inport_names=names, outport_name='out')
+            namesports = {(mp.owner.name + '__' + mp.name):mp for mp in ip.annotation.matchports}
+            ip.annotation.linkedactor = DictionaryMerge(inport_names=namesports.keys(), outport_name='out')
             ip += ip.annotation.linkedactor.outports['out']
-            for mp in ip.annotation.matchports:
-                ip.annotation.linkedactor.inports[mp.name] += mp
+            for n, mp in namesports.items():
+                ip.annotation.linkedactor.inports[n] += mp
         else:
             if opcount > 1:
                 print("Warning: input port ", ip, "has {} output ports".format(opcount) )
