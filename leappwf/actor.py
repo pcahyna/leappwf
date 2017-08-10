@@ -6,7 +6,7 @@ import os
 from subprocess import Popen, PIPE
 from wowp.actors import FuncActor
 
-from .portannotation import ActorError, MsgType
+from .portannotation import ActorError, Any, MsgType
 from .msgtypes import ShellCommandStatus
 
 
@@ -95,9 +95,8 @@ class DirAnnotatedShellActor(AnnotatedFuncActor):
         """ Method that should be executed by actor"""
         logging.debug("[RUNNING]: %s", self.name)
 
-        script_input = open(self._script)
-        child = Popen(self._target_cmd,
-                      stdin=script_input,
+        child = Popen(['sudo', self._script, self._in_actor_data],
+                      stdin=PIPE,
                       stdout=PIPE,
                       stderr=PIPE)
         out, err = child.communicate()
@@ -124,7 +123,6 @@ class DirAnnotatedShellActor(AnnotatedFuncActor):
 
     def __init__(self,
                  name,
-                 target_cmd,
                  script,
                  args=(),
                  kwargs={},
@@ -133,7 +131,14 @@ class DirAnnotatedShellActor(AnnotatedFuncActor):
                  outports=None,
                  outports_annotation=None):
 
-        self._target_cmd = target_cmd
+        self._in_actor_data = ''
+        for port in inports_annotation.values():
+            if port.srcname != Any:
+                self._in_actor_data = os.path.join(
+                    os.path.expanduser(self.output_data_path),
+                    str(port.srcname) + '_out.json')
+                break
+
         self._prefunc = self._default_prefunc
         self._postfunc = self._default_postfunc
         self._script = script
