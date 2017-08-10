@@ -1,6 +1,8 @@
 """ Actors able to execute checks on our workflow """
 
+import json
 import logging
+import os
 from subprocess import Popen, PIPE
 from wowp.actors import FuncActor
 
@@ -42,6 +44,8 @@ class AnnotatedFuncActor(FuncActor):
 
 
 class DirAnnotatedShellActor(AnnotatedFuncActor):
+    output_data_path = '~/.leappwf/actors_output'
+
     def _default_prefunc(self, _, inportargs):
         """ Default function to run before main script """
         logging.debug("[RUNNING] [pre] (default): %s", self.name)
@@ -64,6 +68,25 @@ class DirAnnotatedShellActor(AnnotatedFuncActor):
     def _default_postfunc(self, res):
         """ Default function to run after main script """
         logging.debug("[RUNNING] [post] (default): %s", self.name)
+
+        json_keys = ['actor_src', 'actor_rc', 'actor_stdout', 'actor_stderr']
+        json_data = dict(zip(json_keys, [self.name] + list(res)))
+
+        if not os.path.exists(os.path.expanduser(self.output_data_path)):
+            try:
+                os.makedirs(os.path.expanduser(self.output_data_path))
+            except os.error as err:
+                logging.warning("Failed to create path for actors' output: %s",
+                                err)
+
+        try:
+            with open(os.path.join(os.path.expanduser(self.output_data_path),
+                                   self.name + '_out.json'), 'w') as outfile:
+                json.dump(json_data, outfile)
+        except IOError as err:
+            logging.warning("Failed to write actor output: %s",
+                            err)
+
         return self.outports.values()[0].annotation.msgtype(self.name,
                                                             None,
                                                             res[0])
