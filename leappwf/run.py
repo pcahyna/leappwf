@@ -3,11 +3,12 @@ import glob
 import logging
 import os
 import yaml
+import types
 
 from .actor import DirAnnotatedShellActor
 from .jsonclasses import JSONClassFactory
 from .msgtypes import Trigger
-from .portannotation import Any, DstPortAnnotation, PortAnnotation
+from .portannotation import Any, All, DstPortAnnotation, PortAnnotation, MsgType
 from .workflow import Workflow
 
 _YAML_FILENAME = 'actordecl.yaml'
@@ -121,10 +122,11 @@ class LeAppWorkflow(object):
                                                                      Any)})
         for port in actor.inports:
             if _PORT_SRC_KEY not in port:
-                logging.warning("skip %s: no src actor defined for inport",
-                                actor.name)
-                return
-            psrc = port[_PORT_SRC_KEY]
+                psrc = Any
+            elif port[_PORT_SRC_KEY] == '*':
+                psrc = All
+            else:
+                psrc = port[_PORT_SRC_KEY]
 
             pname = None
             if _PORT_NAME_KEY in port:
@@ -138,7 +140,7 @@ class LeAppWorkflow(object):
 
                 msg_type = self.class_factory.get_actor_class(actor.name,
                                                               ptype)
-            else:
+            elif isinstance(psrc, types.StringTypes):
                 if psrc in self.actors_data:
                     if len(self.actors_data[psrc].outports) == 1:
                         oport = self.actors_data[psrc].outports[0]
@@ -146,13 +148,22 @@ class LeAppWorkflow(object):
                             ptype, _ = os.path.splitext(oport[_PORT_TYPE_KEY])
                             msg_type = self.class_factory.get_actor_class(psrc,
                                                                           ptype)
+                    else:
+                        logging.warning("skip %s: source actor %s has multiple outports",
+                                        actor.name, psrc)
+                else:
+                    logging.warning("skip %s: source actor %s not found",
+                                    actor.name, psrc)
+            else:
+                # no type information and wildcarded source actor. Let's use the most generic type
+                msg_type = MsgType
 
             if msg_type:
                 in_names.append(pname)
                 in_annotation.update({pname: DstPortAnnotation(msg_type,
                                                                psrc)})
             else:
-                logging.warning("skip %s: no inport/outport match",
+                logging.warning("skip %s: no inport type information",
                                 actor.name)
                 return
 
