@@ -1,2 +1,3 @@
 inports  :
-        - src: rpm_list
+        - name: rpm_list
+          src: rpm_list

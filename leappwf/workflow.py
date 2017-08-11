@@ -31,8 +31,8 @@ class Workflow(object):
             """ Simple function to unify all actors output """
             ret = {}
             for msg in stats.values():
-                ret.update({msg.srcname: {'retcode': msg.payload,
-                                          'error': msg.errorinfo}})
+                ret.update({msg.srcname: {'payload': msg.payload,
+                                          'errorinfo': msg.errorinfo}})
             return ret
 
         def_start = AnnotatedFuncActor(

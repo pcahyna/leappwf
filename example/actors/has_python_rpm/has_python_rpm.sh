@@ -14,4 +14,4 @@ print('; '.join(['{}=\"{}\"'.format(k.upper(), d) for k, d in data.items()]))"`
 fi
 
 
-echo "$ACTOR_STDOUT" | grep -o python
+echo "$RPM_LIST" | grep -o python | wc -l

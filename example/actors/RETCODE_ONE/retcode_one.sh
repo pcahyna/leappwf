@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-which SOME_FOOBAR_COMMAND
+SOME_FOOBAR_COMMAND

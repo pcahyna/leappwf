@@ -2,7 +2,7 @@
 
 RPM_LIST=`rpm -qa`
 
-OUT_JSON="{ \"outports\": { \"rpmlist\": ["
+OUT_JSON="{ \"outports\": { \"RPMList\": ["
 SEP=" "
 for PKG in ${RPM_LIST}; do
     printf -v OUT_JSON '%s%s"%s"' "${OUT_JSON}" "${SEP}" "${PKG}"
