@@ -1,2 +1,2 @@
 outports:
-        - type: RPMListStatus.json
+        - type: RPMList.json

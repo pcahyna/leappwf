@@ -1,3 +1,13 @@
 #!/usr/bin/env bash
 
-rpm -qa
+RPM_LIST=`rpm -qa`
+
+OUT_JSON="{ \"outports\": { \"rpmlist\": ["
+SEP=" "
+for PKG in ${RPM_LIST}; do
+    printf -v OUT_JSON '%s%s"%s"' "${OUT_JSON}" "${SEP}" "${PKG}"
+    SEP=,
+done
+OUT_JSON+="] } }"
+
+echo ${OUT_JSON}
