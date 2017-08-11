@@ -1,8 +1,5 @@
 """ Handle actors execution using Workflow programming """
 
-import shlex
-import logging
-
 from .actor import AnnotatedFuncActor
 from .msgtypes import ShellCommandStatus, Trigger
 from .portannotation import (
@@ -13,32 +10,12 @@ from .portannotation import (
     PortAnnotation,
     connectactors)
 
+
 class Workflow(object):
     """ Manage dependencies between actors and execute workflow """
 
-    LOCALHOST_IP = '127.0.0.1'
-
     def __init__(self):
-        self._target_ip = self.LOCALHOST_IP
         self._actors = {}
-
-    @property
-    def target_ip(self):
-        """ Return machine IP where workflow will be executed """
-        return self._target_ip
-
-    @property
-    def is_local_machine(self):
-        """ Return if target machine is local """
-        return self.target_ip == self.LOCALHOST_IP
-
-    def get_exec_cmd(self):
-        """ Return command line that should be executed on target machine """
-        local_sudo_cmd = "sudo bash"
-        if self.is_local_machine:
-            return shlex.split(local_sudo_cmd)
-
-        raise NotImplementedError
 
     def add_actor(self, actor):
         """ Add actor to workflow """
@@ -54,8 +31,8 @@ class Workflow(object):
             """ Simple function to unify all actors output """
             ret = {}
             for msg in stats.values():
-                ret.update({msg.srcname: {'retcode': msg.payload,
-                                          'error': msg.errorinfo}})
+                ret.update({msg.srcname: {'payload': msg.payload,
+                                          'errorinfo': msg.errorinfo}})
             return ret
 
         def_start = AnnotatedFuncActor(

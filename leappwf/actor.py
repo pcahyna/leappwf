@@ -1,6 +1,8 @@
 """ Actors able to execute checks on our workflow """
 
+import json
 import logging
+import os
 from subprocess import Popen, PIPE
 from wowp.actors import FuncActor
 
@@ -42,10 +44,14 @@ class AnnotatedFuncActor(FuncActor):
 
 
 class DirAnnotatedShellActor(AnnotatedFuncActor):
-    def _default_prefunc(self, _, inportargs):
+    inports_data_path = '~/.leappwf/actors_inport'
+    outports_key = 'outports'
+
+    def _default_prefunc(self, inports, inportargs):
         """ Default function to run before main script """
         logging.debug("[RUNNING] [pre] (default): %s", self.name)
 
+        inports_data = {}
         for arg in inportargs:
             if isinstance(arg, MsgType):
                 if arg.errorinfo:
@@ -53,28 +59,59 @@ class DirAnnotatedShellActor(AnnotatedFuncActor):
                                       arg.srcname,
                                       arg.errorinfo)
 
-                if isinstance(arg, ShellCommandStatus):
-                    if arg.payload != 0:
-                        raise PrereqError(
-                            "required actor returned a nonzero exit code",
-                            arg.srcname,
-                            arg.payload)
-        return inportargs
+                if isinstance(arg, ShellCommandStatus) and arg.payload:
+                    for port, portannotation in inports.items():
+                        if isinstance(arg, portannotation.annotation.msgtype):
+                            inports_data.update({port: arg.payload})
+                            break
+
+        inports_file = ''
+        if inports_data:
+            if not os.path.exists(os.path.expanduser(self.inports_data_path)):
+                try:
+                    os.makedirs(os.path.expanduser(self.inports_data_path))
+                except os.error as err:
+                    logging.warning("Error creating input data path: %s",
+                                    err)
+
+            try:
+                inports_file = os.path.join(
+                    os.path.expanduser(self.inports_data_path),
+                    self.name + '_in.json')
+
+                with open(inports_file, 'w') as infile:
+                    json.dump(inports_data, infile)
+            except IOError as err:
+                logging.warning("Failed to write actor inports data: %s",
+                                err)
+        return inportargs, inports_file
 
     def _default_postfunc(self, res):
         """ Default function to run after main script """
         logging.debug("[RUNNING] [post] (default): %s", self.name)
-        return self.outports.values()[0].annotation.msgtype(self.name,
-                                                            None,
-                                                            res[0])
 
-    def _execfunc(self, _):
+        outports_data = {}
+        try:
+            json_data = json.loads(res[1])
+            if isinstance(json_data, dict) and self.outports_key in json_data:
+                outports_data = json_data[self.outports_key]
+        except ValueError:
+            pass
+
+        payload = None
+        if self.outports.keys()[0] in outports_data:
+            payload = outports_data[self.outports.keys()[0]]
+
+        return self.outports.values()[0].annotation.msgtype(self.name,
+                                                            res[2],
+                                                            payload)
+
+    def _execfunc(self, _, inports_file):
         """ Method that should be executed by actor"""
         logging.debug("[RUNNING]: %s", self.name)
 
-        script_input = open(self._script)
-        child = Popen(self._target_cmd,
-                      stdin=script_input,
+        child = Popen(['sudo', self._script, inports_file],
+                      stdin=PIPE,
                       stdout=PIPE,
                       stderr=PIPE)
         out, err = child.communicate()
@@ -82,9 +119,9 @@ class DirAnnotatedShellActor(AnnotatedFuncActor):
 
     def _allfunc(self, *inportargs):
         try:
-            preres = self._prefunc(self.inports, inportargs)
+            preres, inports_file = self._prefunc(self.inports, inportargs)
             try:
-                res = self._execfunc(preres)
+                res = self._execfunc(preres, inports_file)
             except Exception as ee:
                 raise ScriptError("failed", "script execution failed", ee)
 
@@ -101,7 +138,6 @@ class DirAnnotatedShellActor(AnnotatedFuncActor):
 
     def __init__(self,
                  name,
-                 target_cmd,
                  script,
                  args=(),
                  kwargs={},
@@ -110,7 +146,6 @@ class DirAnnotatedShellActor(AnnotatedFuncActor):
                  outports=None,
                  outports_annotation=None):
 
-        self._target_cmd = target_cmd
         self._prefunc = self._default_prefunc
         self._postfunc = self._default_postfunc
         self._script = script

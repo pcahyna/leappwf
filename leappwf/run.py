@@ -195,7 +195,6 @@ class LeAppWorkflow(object):
 
         self.workflow.add_actor(DirAnnotatedShellActor(
             actor.name,
-            self.workflow.get_exec_cmd(),
             script,
             inports=in_names,
             inports_annotation=in_annotation,

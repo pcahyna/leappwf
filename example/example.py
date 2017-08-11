@@ -9,6 +9,9 @@ if __name__ == '__main__':
     ret = wf.run_actors()
     for actor, data in ret.items():
         print("* {}:".format(actor))
-        print("[retcode]: {}".format(data['retcode']))
-        if data['error']:
-            print("\t[error]: {}".format(data['error']))
+        #if data['payload']:
+        #    print("[payload]: {}".format(data['payload']))
+        if data['errorinfo']:
+            print("\t[errorinfo]: {}".format(data['errorinfo']))
+        else:
+            print("\t[OK]")
