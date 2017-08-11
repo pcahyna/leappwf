@@ -37,7 +37,7 @@ class JSONClassFactory(object):
 
         return self._classes[src_actor].keys()
 
-    def _parse_json_file(self, src_actor, file_path, class_name=None):
+    def _parse_json_file(self, namespace, file_path, class_name=None):
         """ Parse and validate JSON file """
         with open(file_path, 'r') as stream:
             try:
@@ -60,18 +60,18 @@ class JSONClassFactory(object):
             file_name = os.path.basename(file_path)
             name, _ = os.path.splitext(file_name)
 
-        if src_actor not in self._classes_data:
-            self._classes_data.update({src_actor: []})
+        if namespace not in self._classes_data:
+            self._classes_data.update({namespace: []})
 
-        self._classes_data[src_actor].append((name, class_data))
+        self._classes_data[namespace].append((name, class_data))
 
-    def add_json_class(self, src_actor, json_path, class_name=None):
+    def add_json_class(self, namespace, json_path, class_name=None):
         """ Load and parse provided JSON file with class definition """
         if not json_path.endswith('.json'):
             logging.warning("%s not JSON file ignored", json_path)
             return
 
-        self._parse_json_file(src_actor, json_path, class_name)
+        self._parse_json_file(namespace, json_path, class_name)
 
     def get_actor_class(self, src_actor, class_name):
         """ Return generated class by name """
