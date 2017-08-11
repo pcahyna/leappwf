@@ -103,7 +103,7 @@ class DirAnnotatedShellActor(AnnotatedFuncActor):
             payload = outports_data[self.outports.keys()[0]]
 
         return self.outports.values()[0].annotation.msgtype(self.name,
-                                                            None,
+                                                            res[2],
                                                             payload)
 
     def _execfunc(self, _, inports_file):
