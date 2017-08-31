@@ -1,6 +1,6 @@
 import logging
 
-from .run import LeAppWorkflow
+from .workflow import Workflow
 
 logging.basicConfig(format='%(levelname)s: %(message)s',
-                    level=logging.INFO)
+                    level=logging.DEBUG)

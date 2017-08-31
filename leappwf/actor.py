@@ -42,6 +42,109 @@ class AnnotatedFuncActor(FuncActor):
         for opn in self.outports.keys():
             self.outports[opn].annotation = outports_annotations[opn]
 
+class AnnotatedSnActor(AnnotatedFuncActor):
+    def __init__(self,
+                 snactor,
+                 args=(),
+                 kwargs={},
+                 inports=None,
+                 inports_annotation=None,
+                 outports=None,
+                 outports_annotation=None):
+
+        self._execfunc = snactor.execute
+
+        super(AnnotatedSnActor, self).__init__(self._allfunc,
+                                                     args, kwargs,
+                                                     snactor.definition.name,
+                                                     inports,
+                                                     inports_annotation,
+                                                     outports,
+                                                     outports_annotation)
+
+    def _prefunc(self, inports, inportargs):
+        """ Default function to prepare data for snactor """
+        logging.debug("[RUNNING] [pre] (default): %s, %s, %s", self.name, inports, inportargs)
+
+        inports_data = {}
+        for inport, arg in zip(inports.keys(), inportargs):
+            if isinstance(arg, MsgType):
+                # TODO revisit error handling
+                # this all belongs to the executors which should be able to do with errors from previous actors
+                # if arg.errorinfo:
+                #     raise PrereqError("required actor failed",
+                #                       arg.srcname,
+                #                       arg.errorinfo)
+                if arg.errorinfo:
+                    logging.warning("required actor %s failed: %s", arg.srcname, arg.errorinfo)
+                if arg.payload:
+                    logging.info("[INSIDE] [pre] (default) - port %s, payload: %s", inport, arg.payload)
+                    for portname, port in inports.items():
+                        # TODO revisit arg type (schema) checking (probably will be done in snactor)
+                        # if isinstance(arg, portannotation.annotation.msgtype):
+                        if portname == inport:
+                            inports_data.update({portname: arg.payload})
+                            break
+        logging.debug("[RETURNING] [pre] (default): %s, %s", self.name, inports_data)
+        return inports_data
+
+    def _postfunc(self, res):
+        """ Default function to run after main script """
+        logging.debug("[RUNNING] [post] (default): %s", self.name)
+
+        outports_data = res[1]
+        success = res[0]
+
+        if success:
+            ee = None
+        else:
+            ee = ScriptError("failed", "script execution returned nonzero exit code", "")
+
+        if len(self.outports) == 1:
+            payload = None
+            if success:
+                if self.outports.keys()[0] in outports_data:
+                    payload = outports_data[self.outports.keys()[0]]
+                else:
+                    ee = ScriptError("failed", "script data did not contain output port {p}:".format(p=self.outports.keys()[0]), outports_data)
+            return MsgType(self.name, ee, payload)
+
+        else:
+            payloads = [None for port in self.outports.keys()]
+            if success:
+                try:
+                    payloads = [outports_data[port] for port in self.outports.keys()]
+                except KeyError as ke:
+                    ee = ScriptError("failed", "script data did not contain output port {p}:".format(p=str(ke)), outports_data)
+            return tuple(MsgType(self.name, ee, payload) for payload in payloads)
+
+    def _allfunc(self, *inportargs):
+        try:
+            inports_data = self._prefunc(self.inports, inportargs)
+            try:
+                retcode = self._execfunc(inports_data)
+                if retcode:
+                    # snactor execution modifies its argument
+                    outports_data = inports_data
+                else:
+                    outports_data = None
+            except Exception as ee:
+                raise ScriptError("failed", "script execution failed", ee)
+
+        except ActorError as ae:
+            if len(self.outports) == 1:
+                # excres = self.outports.at(0).annotation.msgtype(self.name,
+                #                                                 ae,
+                #                                                 None)
+                excres = MsgType(self.name, ae, None)
+
+            else:
+                # port.annotation.msgtype(self.name, ae, None) for port in self.outports
+                excres = tuple(MsgType(self.name, ae, None) for port in self.outports)
+            return excres
+
+        return self._postfunc((retcode, outports_data))
+
 
 class DirAnnotatedShellActor(AnnotatedFuncActor):
     inports_data_path = '~/.leappwf/actors_inport'

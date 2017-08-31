@@ -1,3 +1,5 @@
+import logging
+
 from wowp.actors import DictionaryMerge
 
 class Any(object):
@@ -41,10 +43,14 @@ class InitialPortAnnotation(DstPortAnnotation):
 #    def __init__(self, *args, **kwargs):
 #        super().__init__(*args, **kwargs)
 
+def matchtypes(intype, outtype):
+    # no classes yet for snactor
+    #return issubclass(outtype, intype)
+    return intype == outtype
 
 def matchport(inport, outport):
     try:
-        return (issubclass(outport.annotation.msgtype, inport.annotation.msgtype) and
+        return (matchtypes(inport.annotation.msgtype, outport.annotation.msgtype) and
                 (inport.annotation.srcname == Any or
                  inport.annotation.srcname == All or
                  outport.owner.name == inport.annotation.srcname ))
@@ -77,6 +83,7 @@ def connectactors(actors):
     for ip in allinports:
         opcount = 0
         if isinstance(ip.annotation, InitialPortAnnotation):
+            logging.debug('initial found %s: %s(%s)', ip.owner, ip.owner.name, ip.name)
             continue
 
         if ip.annotation.srcname==All:
@@ -84,10 +91,10 @@ def connectactors(actors):
 
         for op in alloutports:
             if matchport(ip, op):
-#                print("matched! ", ip)
+                logging.debug("matched! %s: %s(%s) -> %s(%s)", op.owner, op.owner.name, op.name, ip.owner.name, ip.name)
                 opcount += 1
                 if ip.annotation.srcname==All:
-#                    print("wildcard matched! ", ip)
+                    logging.debug("wildcard matched! %s", ip)
                     ip.annotation.matchports.append(op)
                 else:
                     ip += op
@@ -95,10 +102,11 @@ def connectactors(actors):
                 # break
         if ip.annotation.srcname == All:
             namesports = {(mp.owner.name + '__' + mp.name):mp for mp in ip.annotation.matchports}
+            logging.debug('adding DictionaryMerge for %s', ip)
             ip.annotation.linkedactor = DictionaryMerge(inport_names=namesports.keys(), outport_name='out')
             ip += ip.annotation.linkedactor.outports['out']
             for n, mp in namesports.items():
                 ip.annotation.linkedactor.inports[n] += mp
         else:
             if opcount > 1:
-                print("Warning: input port ", ip, "has {} output ports".format(opcount) )
+                logging.warning("Warning: input port %s has %d output ports", ip, opcount)
