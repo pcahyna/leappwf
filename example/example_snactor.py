@@ -3,11 +3,14 @@
 
 import leappwf
 from pprint import pprint
-from snactor.loader import load
+from snactor.loader import load, load_schemas, validate_actor_types
 from snactor.registry import get_actor, _REGISTERED_ACTORS
 
 if __name__ == '__main__':
     load('sn_actors', tags=('check_target',))
+    load_schemas('schema')
+    validate_actor_types()
+
     #a = get_actor('simple-actor')
     #print (a.definition.__dict__)
 
