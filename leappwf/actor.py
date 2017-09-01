@@ -123,12 +123,14 @@ class AnnotatedSnActor(AnnotatedFuncActor):
             inports_data = self._prefunc(self.inports, inportargs)
             try:
                 retcode = self._execfunc(inports_data)
+                logging.debug("%s: retcode %s", self.name, retcode)
                 if retcode:
                     # snactor execution modifies its argument
                     outports_data = inports_data
                 else:
                     outports_data = None
             except Exception as ee:
+                logging.warning("%s: script execution failed with exception %s", self.name, ee)
                 raise ScriptError("failed", "script execution failed", ee)
 
         except ActorError as ae:
