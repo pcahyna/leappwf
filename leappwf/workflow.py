@@ -12,7 +12,7 @@ from .portannotation import (
     PortAnnotation,
     connectactors)
 
-from snactor.registry import get_actor, _REGISTERED_ACTORS
+from snactor.registry import get_actor, get_registered_actors
 
 _PORT_NAME_KEY = 'name'
 _PORT_SRC_KEY = 'src'
@@ -187,7 +187,7 @@ class Workflow(object):
         #['final_out'].pop()
 
     def load_snactors(self):
-        self.snactors = {aname: get_actor(aname) for aname in _REGISTERED_ACTORS.keys()}
+        self.snactors = {aname: get_actor(aname) for aname in get_registered_actors().keys()}
         #print (self.snactors)
         for a in self.snactors.values():
             self.snactor2wowp(a)
