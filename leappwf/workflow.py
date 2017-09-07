@@ -186,8 +186,11 @@ class Workflow(object):
         return ret_workflow
         #['final_out'].pop()
 
-    def load_snactors(self):
-        self.snactors = {aname: get_actor(aname) for aname in get_registered_actors().keys()}
+    def load_snactors(self, names=None):
+        if names is not None:
+            self.snactors = {aname: get_actor(aname) for aname in get_registered_actors().keys() if aname in names}
+        else:
+            self.snactors = {aname: get_actor(aname) for aname in get_registered_actors().keys()}
         #print (self.snactors)
         for a in self.snactors.values():
             self.snactor2wowp(a)
